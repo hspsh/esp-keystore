@@ -10,7 +10,9 @@ AsyncMqttClient mqttClient;
 
 class MqNode {
 public:
-  virtual void onInit(String topic);
+  virtual void onInit(String topic){
+    Serial.println("C++ TO SHIT");
+  }
 };
 
 class MqBranch : public MqNode {
@@ -44,45 +46,25 @@ public:
   }
 };
 
+String chipId = String(ESP.getChipId());
+MqNode buttonA = MqBranch("keys", MqBranch(chipId.c_str(), MqButton(14)));
+MqNode buttonB = MqBranch("keys", MqBranch(chipId.c_str(), MqButton(13)));
+MqNode buttonC = MqBranch("keys", MqBranch(chipId.c_str(), MqButton(12)));
 
-MqNode buttonA = MqButton(14);
-MqNode buttonB = MqButton(13);
-MqNode buttonC = MqButton(12);
 
-bool connected = false;
-
-String deviceTopic = "";
-String topicA = "";
-String topicB = "";
-String topicC = "";
 
 void setup() {
   Serial.begin(9600);
   client.begin("eduram", "zarazcipodam");
   mqttClient.setServer("mqtt.hack", 1883);
 
-  deviceTopic.concat("keys");
-  deviceTopic.concat("/");
-  deviceTopic.concat(String(ESP.getChipId()));
-  deviceTopic.concat("/");
-  deviceTopic.end();
-
-  topicA.concat(deviceTopic);
-  topicA.concat("A");
-
-  topicB.concat(deviceTopic);
-  topicB.concat("B");
-
-  topicC.concat(deviceTopic);
-  topicC.concat("C");
-
   Serial.println("XD");
 
   mqttClient.onConnect([](bool b) {
     Serial.println("CONNECTED");
-    buttonA.onInit(topicA);
-    buttonB.onInit(topicB);
-    buttonC.onInit(topicC);
+    buttonA.onInit("");
+    buttonB.onInit("");
+    buttonC.onInit("");
     Serial.println("IT IS DONE");
   });
   mqttClient.connect();
