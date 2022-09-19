@@ -14,30 +14,6 @@ public:
   virtual void onInit(String topic) = 0;
 };
 
-class MqBranch : public MqNode {
-  const char *name;
-  MqNode *mqNode;
-  MqBranch *next = NULL;
-
-public:
-  template <typename T, typename... Args>
-  MqBranch(const char *name, T *mqNode, Args... mqNodes)
-      : name(name), mqNode(mqNode), next(new MqBranch(name, mqNodes...)) {}
-
-  template <typename T>
-  MqBranch(const char *name, T *mqNode) : name(name), mqNode(mqNode) {}
-
-  void onInit(String topic) {
-    if (next != NULL)
-      next->onInit(topic);
-
-    topic.concat(topic.length() == 0 ? "" : "/");
-    topic.concat(name);
-
-    mqNode->onInit(topic);
-  }
-};
-
 class MqButton : public MqNode {
   Button button;
   String name;
@@ -46,7 +22,7 @@ public:
   MqButton(String name, uint8 port) : button(port, INPUT), name(name) {}
 
   void onInit(String topic) {
-    topic.concat(topic.length() == 0 ? "" : "/");
+    topic.concat("/");
     topic.concat(name);
 
     mqttClient.publish(topic.c_str(), 0, true,
@@ -58,22 +34,53 @@ public:
   }
 };
 
+template<int SIZE> class MqBranch : public MqNode {
+  const char *name;
+  std::array<MqNode*, SIZE> mqNodes;
+
+public:
+  MqBranch(const char *name, std::array<MqNode*, SIZE> mqNodes) : name(name), mqNodes(mqNodes) {}
+
+  void onInit(String topic) {
+    topic.concat("/");
+    topic.concat(name);
+
+    for(auto mqNode: mqNodes){
+        mqNode->onInit(topic);
+    }
+  }
+};
+
+template<int SIZE> class MqRoot {
+  String name;
+  std::array<MqNode*, SIZE> mqNodes;
+
+public:
+  MqRoot(const char *name, std::array<MqNode*, SIZE> mqNodes) : name(name), mqNodes(mqNodes) {}
+
+  void onInit() {
+    for(auto mqNode: mqNodes){
+        mqNode->onInit(name);
+    }
+  }
+};
+
 String chipId = String(ESP.getChipId());
-MqNode *buttons = 
-    new MqBranch("keys", 
-        new MqBranch(chipId.c_str(), 
-            new MqButton("A", 14),
-            new MqButton("B", 13), 
-            new MqButton("C", 12)
-        )
-    );
+MqRoot<1> *buttons = 
+    new MqRoot<1>("keys", {
+        new MqBranch<3>(chipId.c_str(), {
+                new MqButton("A", 14),
+                new MqButton("B", 13), 
+                new MqButton("C", 12)
+            })
+        });
 
 void setup() {
   Serial.begin(9600);
   client.begin("eduram", "zarazcipodam");
   mqttClient.setServer("mqtt.hack", 1883);
 
-  mqttClient.onConnect([](bool b) { buttons->onInit(""); });
+  mqttClient.onConnect([](bool b) { buttons->onInit(); });
   mqttClient.connect();
 }
 
