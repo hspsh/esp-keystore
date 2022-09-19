@@ -46,7 +46,6 @@ public:
   MqButton(String name, uint8 port) : button(port, INPUT), name(name) {}
 
   void onInit(String topic) {
-    Serial.println("FAVICON");
     topic.concat(topic.length() == 0 ? "" : "/");
     topic.concat(name);
 
