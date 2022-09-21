@@ -9,6 +9,8 @@
 RestClient client = RestClient("banana.at.hsp.net.pl", 8000);
 AsyncMqttClient mqttClient;
 
+const int PIN_LED = 4;
+
 class MqNode {
 public:
   virtual void onInit(String topic) = 0;
@@ -34,12 +36,29 @@ public:
   }
 };
 
+
+class MqStringProperty : public MqNode {
+  String name, value;
+
+public:
+  MqStringProperty(String name, String value) : name(name), value(value) {}
+
+  void onInit(String topic) {
+    topic.concat("/");
+    topic.concat(name);
+
+    mqttClient.publish(topic.c_str(), 0, true, value.c_str());
+  }
+};
+
+
+
 template<int SIZE> class MqBranch : public MqNode {
-  const char *name;
+  String name;
   std::array<MqNode*, SIZE> mqNodes;
 
 public:
-  MqBranch(const char *name, std::array<MqNode*, SIZE> mqNodes) : name(name), mqNodes(mqNodes) {}
+  MqBranch(String name, std::array<MqNode*, SIZE> mqNodes) : name(name), mqNodes(mqNodes) {}
 
   void onInit(String topic) {
     topic.concat("/");
@@ -56,7 +75,7 @@ template<int SIZE> class MqRoot {
   std::array<MqNode*, SIZE> mqNodes;
 
 public:
-  MqRoot(const char *name, std::array<MqNode*, SIZE> mqNodes) : name(name), mqNodes(mqNodes) {}
+  MqRoot(String name, std::array<MqNode*, SIZE> mqNodes) : name(name), mqNodes(mqNodes) {}
 
   void onInit() {
     for(auto mqNode: mqNodes){
@@ -65,23 +84,39 @@ public:
   }
 };
 
-String chipId = String(ESP.getChipId());
+// String deviceName = String(zESP.getChipId());
+String deviceName = "triton one";
+
 MqRoot<1> *buttons = 
-    new MqRoot<1>("keys", {
-        new MqBranch<3>(chipId.c_str(), {
-                new MqButton("A", 14),
-                new MqButton("B", 13), 
-                new MqButton("C", 12)
-            })
-        });
+    new MqRoot<1>("homie", {
+      new MqBranch<2>(deviceName, {
+        new MqBranch<3>("nuttons", {
+          new MqButton("A", 14),
+          new MqButton("B", 13), 
+          new MqButton("C", 12)
+        }),
+        new MqStringProperty("$homie","3.0")
+    })
+  });
+
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   client.begin("eduram", "zarazcipodam");
   mqttClient.setServer("mqtt.hack", 1883);
+
+  pinMode(PIN_LED, OUTPUT);
+
 
   mqttClient.onConnect([](bool b) { buttons->onInit(); });
   mqttClient.connect();
 }
 
-void loop() {}
+void loop() {
+  static int test = 0;
+  static uint8_t heartbeat_pattern[] = {1,0,0,1,0,0,0,0,0,0,0,0,0};
+  
+  uint8_t pattern_index = (test++)% sizeof(heartbeat_pattern);
+  digitalWrite(PIN_LED, heartbeat_pattern[pattern_index]);
+  delay(100);
+}
