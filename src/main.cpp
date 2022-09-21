@@ -51,6 +51,20 @@ public:
   }
 };
 
+class MqStatsAggregate : public MqNode {
+  MqStringProperty mqIpAddr;
+
+public:
+  MqStatsAggregate() : mqIpAddr("ipAddr","2137") {}
+
+  void onInit(String topic) {
+    topic.concat("/");
+    topic.concat("stats");
+
+    // mqttClient.publish(topic.c_str(), 0, true, "idk");
+    mqIpAddr.onInit(topic);
+  }
+};
 
 
 template<int SIZE> class MqBranch : public MqNode {
@@ -95,7 +109,7 @@ MqRoot<1> *buttons =
           new MqButton("B", 13), 
           new MqButton("C", 12)
         }),
-        new MqStringProperty("$homie","3.0")
+        new MqStatsAggregate()
     })
   });
 
