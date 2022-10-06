@@ -1,0 +1,1 @@
+doppler run -- pio run -e ota_test -t upload

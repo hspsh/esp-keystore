@@ -1,3 +1,5 @@
 .pio
 .ccls-cache
 .vscode
+
+secrets.h
